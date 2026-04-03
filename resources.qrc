@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/icons/Status_bar.svg</file>
+    </qresource>
+</RCC>
