@@ -11,6 +11,20 @@ Item {
     property Rectangle lastOperationButton: null
     property Text lastOperationButtonText: null
     property string lastOperationOriginalColor: ""
+    property bool secretModeActive: false       // флаг долгого нажатия =
+    property string secretInputSequence: ""    // хранит введённую последовательность
+
+
+    Timer {
+        id: longPressTimer
+        interval: 4000  // 4 секунды
+        repeat: false
+        onTriggered: {
+            secretModeActive = true
+            secretInputSequence = ""
+            console.log("Долгое нажатие = активировало секретный режим")
+        }
+    }
 
     // Верхний статус-бар
     Image {
@@ -42,7 +56,7 @@ Item {
             anchors.rightMargin: 20
             horizontalAlignment: Text.AlignRight
             verticalAlignment: Text.AlignVCenter
-            text: "0"
+            text: ""
             font.family: "Open Sans"
             font.bold: true
             font.pixelSize: 24
@@ -134,6 +148,16 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
+                        onPressed: {
+                            if (modelData.text === "=") {
+                                longPressTimer.start()
+                            }
+                        }
+                        onReleased: {
+                            if (modelData.text === "=") {
+                                longPressTimer.stop()  // если отпустили раньше 4 секунд
+                            }
+                        }
                         onClicked: {
                             let t = modelData.text
 
@@ -160,6 +184,23 @@ Item {
                                 btnRect.color = "#F7E425"
                                 btnText.color = "#000000"
                             }
+
+                            if (secretModeActive) {
+                                // добавляем только цифры
+                                if (!isNaN(Number(modelData.text))) {
+                                    secretInputSequence += modelData.text
+
+                                    // ограничиваем длину до последних 3 цифр
+                                    if (secretInputSequence.length > 3)
+                                        secretInputSequence = secretInputSequence.slice(-3)
+
+                                    if (secretInputSequence === "123") {
+                                        secretScreen.visible = true
+                                        secretModeActive = false
+                                        secretInputSequence = ""
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -179,4 +220,57 @@ Item {
         }
     }
 
+
+    Rectangle {
+        id: secretScreen
+        anchors.fill: parent
+        color: "#04BFAD"
+        visible: false
+
+        Text {
+            id: txt
+            anchors.top: parent.top
+            anchors.topMargin: 40
+            text: "Найдено секретное меню"
+            font.pixelSize: 28
+            color: "white"
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        Rectangle {
+            id: secretImages
+            anchors.top: txt.bottom
+            anchors.topMargin: 40
+            width: parent.width
+            height: 300
+            anchors.horizontalCenter: parent.horizontalCenter
+            radius: 15
+
+            Image {
+                anchors.fill: parent
+                source: "qrc:/images/2.jpg"
+            }
+        }
+
+        Text {
+            id: txt2
+            anchors.top: secretImages.bottom
+            anchors.topMargin: 40
+            text: "Возьмешь меня на работу?"
+            font.pixelSize: 28
+            color: "white"
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        Button {
+            text: "ДА!"
+            font.pixelSize: 14
+            width: 50
+            height: 20
+            anchors.top: txt2.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 40
+            onClicked: secretScreen.visible = false
+        }
+    }
 }
