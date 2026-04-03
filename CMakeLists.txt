@@ -20,7 +20,7 @@ qt_add_qml_module(apptest_npo_colibry_qml
         resources.qrc
         QML_FILES MyCalculator.qml
         QML_FILES MyCalculateButton.qml
-        SOURCES   controller.h enums.h mainwindow.cpp  pow.h rational.h
+        SOURCES   controller.h enums.h mainwindow.cpp  pow.h
 RESOURCES mainwindow.ui
 SOURCES calculator.h
 )

@@ -8,6 +8,9 @@ Item {
     property int buttonSize: 60
     property int spacing: 12
     property bool openVal: false
+    property Rectangle lastOperationButton: null
+    property Text lastOperationButtonText: null
+    property string lastOperationOriginalColor: ""
 
     // Верхний статус-бар
     Image {
@@ -84,6 +87,7 @@ Item {
         anchors.bottomMargin: 40
         // #F7E425 желтый
         Repeater {
+            id: repeter
             model: [
                 {text: "()",    color: "#0889A6"},
                 {text: "+/-",   color: "#0889A6"},
@@ -110,16 +114,26 @@ Item {
             delegate: Item {
                 width: buttonSize
                 height: buttonSize
-                signal clickedSignal(string value)
 
                 Rectangle {
+                    id: btnRect
                     anchors.fill: parent
                     color: modelData.color
                     radius: width / 2
                     antialiasing: true
 
+                    Text {
+                        id: btnText
+                        anchors.centerIn: parent
+                        text: modelData.text
+                        color: modelData.color === "white" ? "#04BFAD" : "white"
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
+
                     MouseArea {
                         anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             let t = modelData.text
 
@@ -128,23 +142,25 @@ Item {
                                 t = openVal ? ")" : "("
                                 openVal = !openVal
                                 controller.handleButtonClick(t)
-                            }
-                            else if (t === "÷") controller.handleButtonClick("/")
-                            else {
-                                controller.handleButtonClick(modelData.text)
+                            } else if (t === "÷") controller.handleButtonClick("/")
+                            else controller.handleButtonClick(t)
+
+                            // Сброс предыдущей выделенной кнопки
+                            if (lastOperationButton) {
+                                lastOperationButton.color = lastOperationOriginalColor
+                                lastOperationButtonText.color = (lastOperationOriginalColor === "white") ? "#04BFAD" : "white"
                             }
 
+                            // Подсветка текущей кнопки (только для операций)
+                            if (isNaN(Number(t)) && t !== "C") {
+                                lastOperationButton = btnRect
+                                lastOperationButtonText = btnText
+                                lastOperationOriginalColor = btnRect.color
 
+                                btnRect.color = "#F7E425"
+                                btnText.color = "#000000"
+                            }
                         }
-                        cursorShape: Qt.PointingHandCursor
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: modelData.text
-                        color: modelData.color === "white" ? "#04BFAD" : "white"
-                        font.pixelSize: 20
-                        font.bold: true
                     }
                 }
             }

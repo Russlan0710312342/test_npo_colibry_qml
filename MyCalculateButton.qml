@@ -32,7 +32,6 @@ Item {
         // События нажатия
         MouseArea {
             anchors.fill: parent
-            // onClicked: clicked()
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
         }
