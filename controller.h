@@ -120,7 +120,7 @@ private:
         while (true) {
             char op = 0;
             if (!(in >> op)) break;
-            if (op != 'x' && op != '÷') {
+            if (op != 'x' && op != '/') {
                 in.putback(op);
                 break;
             }

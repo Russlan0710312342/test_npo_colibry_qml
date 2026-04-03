@@ -129,6 +129,7 @@ Item {
                                 openVal = !openVal
                                 controller.handleButtonClick(t)
                             }
+                            else if (t === "÷") controller.handleButtonClick("/")
                             else {
                                 controller.handleButtonClick(modelData.text)
                             }
