@@ -7,6 +7,7 @@ Item {
 
     property int buttonSize: 60
     property int spacing: 12
+    property bool openVal: false
 
     // Верхний статус-бар
     Image {
@@ -38,7 +39,7 @@ Item {
             anchors.rightMargin: 20
             horizontalAlignment: Text.AlignRight
             verticalAlignment: Text.AlignVCenter
-            text: "380 + 240"
+            text: "0"
             font.family: "Open Sans"
             font.bold: true
             font.pixelSize: 24
@@ -56,7 +57,7 @@ Item {
             anchors.rightMargin: 20
             horizontalAlignment: Text.AlignRight
             verticalAlignment: Text.AlignVCenter
-            text: "620"
+            text: "0"
             font.family: "Open Sans"
             font.bold: true
             font.pixelSize: 50
@@ -71,7 +72,6 @@ Item {
         id: buttonGrid
         anchors.top: inputFrame.bottom
         anchors.topMargin: 20
-        anchors.horizontalCenter: parent.horizontalCenter
         columns: 4
         rowSpacing: 25
         columnSpacing: 25
@@ -110,6 +110,7 @@ Item {
             delegate: Item {
                 width: buttonSize
                 height: buttonSize
+                signal clickedSignal(string value)
 
                 Rectangle {
                     anchors.fill: parent
@@ -119,7 +120,20 @@ Item {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: console.log("Button clicked:", modelData.text)
+                        onClicked: {
+                            let t = modelData.text
+
+                            // нормализация
+                            if (t === "x")      t = "*"
+                            else if (t === "÷") t = "/"
+                            else if (t === "()")
+                            {
+                                t = openVal ? ")" : "("
+                                openVal = !openVal
+                            }
+                            controller.handleButtonClick(modelData.text)
+
+                        }
                         cursorShape: Qt.PointingHandCursor
                     }
 
@@ -134,4 +148,17 @@ Item {
             }
         }
     }
+
+    Connections {
+        target: controller
+
+        function onUpdateInput (str) {
+            resultLine.text = str
+        }
+
+        function onUpdateFormula (str) {
+            calculationLine.text = str
+        }
+    }
+
 }

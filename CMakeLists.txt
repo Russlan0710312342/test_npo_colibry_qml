@@ -4,7 +4,7 @@ project(test_npo_colibry_qml VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Quick Core)
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -20,6 +20,9 @@ qt_add_qml_module(apptest_npo_colibry_qml
         resources.qrc
         QML_FILES MyCalculator.qml
         QML_FILES MyCalculateButton.qml
+        SOURCES   controller.h enums.h mainwindow.cpp  pow.h rational.h
+RESOURCES mainwindow.ui
+SOURCES calculator.h
 )
 
 qt_add_resources(RESOURCE_SOURCES resources.qrc)
@@ -37,7 +40,7 @@ set_target_properties(apptest_npo_colibry_qml PROPERTIES
 )
 
 target_link_libraries(apptest_npo_colibry_qml
-    PRIVATE Qt6::Quick
+    PRIVATE Qt6::Quick Qt6::Core
 )
 
 install(TARGETS apptest_npo_colibry_qml

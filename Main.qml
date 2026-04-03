@@ -16,6 +16,4 @@ Window {
         id: calculator
         anchors.fill: parent
     }
-
-
 }

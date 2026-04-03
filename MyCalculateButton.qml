@@ -3,6 +3,8 @@ import QtQuick.Controls 2.15
 
 Item {
     id: calculateButtonRoot
+
+    signal clickedSignal()
     property alias text: buttonText.text   // текст кнопки
     property color color: "white"          // цвет кнопки
     width: 60
@@ -30,7 +32,7 @@ Item {
         // События нажатия
         MouseArea {
             anchors.fill: parent
-            onClicked: console.log("Button clicked")
+            // onClicked: clicked()
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
         }
@@ -46,3 +48,4 @@ Item {
         }
     }
 }
+
