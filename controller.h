@@ -1,293 +1,161 @@
 #pragma once
-
-#include <qdebug.h>
-#include <string>
+#include <QObject>
+#include <QString>
+#include <stack>
 #include <sstream>
-#include "calculator.h"
-#include "mainwindow.h"
-#include "rational.h"
+#include <stdexcept>
+#include <cctype>
+#include <cmath>
 
-template<class T>
-std::string ToString(T number) {
-    std::ostringstream tmp_str;
-    tmp_str << number;
-    return tmp_str.str();
-}
-
-template<class T>
-inline T FromString(const std::string& number) {
-    std::istringstream tmp_str{number};
-    T result{};
-    tmp_str >> result;
-    return result;
-}
-
-inline std::string ToString(std::uint8_t number) {
-    std::ostringstream tmp_str;
-    tmp_str << +number;
-    return tmp_str.str();
-}
-
-template<>
-inline std::uint8_t FromString<std::uint8_t>(const std::string& number) {
-    std::istringstream tmp_str{number};
-    unsigned result{};
-    tmp_str >> result;
-    return static_cast<std::uint8_t>(result);
-}
-
-class Controller : public QObject
-{
+class Controller : public QObject {
     Q_OBJECT
-    using Number = double;
 public:
-    Controller() {}
+    explicit Controller(QObject* parent = nullptr) : QObject(parent) {}
+
+    Q_INVOKABLE void handleButtonClick(const QString &text) {
+        if (text == "C") clearAll();
+        else if (text == "=") evaluateExpression();
+        else inputChar(text);
+    }
 
 signals:
     void updateInput(const QString& str);
     void updateFormula(const QString& str);
-    void updateExtraKey(const std::optional<std::string>& key);
-
-public slots:
-    void handleButtonClick(const QString &text)
-    {
-        qDebug() << "Button pressed:" << text;
-
-        // Цифры 0-9
-        if (text.size() == 1 && text[0] >= '0' && text[0] <= '9') {
-            int digit = text[0].toLatin1() - '0';
-            PressDigitKey(digit);
-            return;
-        }
-        // Операции
-        else if (text == "+") {
-            ProcessOperationKey(Operation::ADDITION);
-            return;
-        }
-        else if (text == "-") {
-            ProcessOperationKey(Operation::SUBTRACTION);
-            return;
-        }
-        else if (text == "%") {
-            ProcessOperationKey(Operation::PERCENT);
-            return;
-        }
-        else if (text == "x") {
-            ProcessOperationKey(Operation::MULTIPLICATION);
-            return;
-        }
-        else if (text == "÷") {
-            ProcessOperationKey(Operation::DIVISION);
-            return;
-        }
-        else if (text == "^") {
-            ProcessOperationKey(Operation::POWER);
-            return;
-        }
-        // Управляющие кнопки
-        else if (text == "=") {
-            ProcessControlKey(ControlKey::EQUALS);
-            return;
-        }
-        else if (text == "C") {
-            ProcessControlKey(ControlKey::CLEAR);
-            return;
-        }
-        else if (text == "+/-") {
-            ProcessControlKey(ControlKey::PLUS_MINUS);
-            return;
-        }
-        else if (text == ".") {
-            ProcessControlKey(ControlKey::EXTRA_KEY);
-            return;
-        }
-        else if (text == "(" || text == ")") {
-            AddChar(text[0].toLatin1());
-            return;
-        }
-    }
 
 private:
-    void PressDigitKey(int digit) {
-        AddChar(digit + '0');
+    QString currentInput;   // текущий набор цифр
+    QString currentFormula; // вся формула
+    bool lastWasOperator = false;
+
+    void clearAll() {
+        currentInput.clear();
+        currentFormula.clear();
+        lastWasOperator = false;
+        emit updateInput(currentInput);
+        emit updateFormula(currentFormula);
     }
 
-    void ProcessOperationKey(Operation operation) {
-        switch(operation) {
-        case Operation::ADDITION:
-            OnOperation([this](Number x){return calculator_.Add(x);}, " + ");
-            break;
-        case Operation::SUBTRACTION:
-            OnOperation([this](Number x){return calculator_.Sub(x);}, " − ");
-            break;
-        case Operation::MULTIPLICATION:
-            OnOperation([this](Number x){return calculator_.Mul(x);}, " × ");
-            break;
-        case Operation::DIVISION:
-            OnOperation([this](Number x){return calculator_.Div(x);}, " ÷ ");
-            break;
-        case Operation::POWER:
-            OnOperation([this](Number x){return calculator_.Pow(x);}, " ^ ");
-            break;
-        case Operation::PERCENT:
-            OnOperation([this](Number x){return calculator_.Percent();}, " % ");
-            break;
+    void inputChar(const QString &text) {
+        if (text[0].isDigit()) {
+            // нельзя вводить несколько ведущих нулей
+            if (!(currentInput == "0" && text == "0")) {
+                if (currentInput == "0" && text != ".") currentInput.clear();
+                currentInput += text;
+                lastWasOperator = false;
+            }
+        } else if (text == ".") {
+            if (!currentInput.contains(".")) {
+                if (currentInput.isEmpty()) currentInput = "0";
+                currentInput += ".";
+            }
+        } else if (text == "+/-") {
+            if (!currentInput.isEmpty()) {
+                if (currentInput.startsWith("-")) currentInput = currentInput.mid(1);
+                else currentInput = "-" + currentInput;
+            }
+        } else if (text == "%") {
+            if (!currentInput.isEmpty()) {
+                double val = currentInput.toDouble() / 100.0;
+                currentInput = QString::number(val, 'g', 15);
+            }
+        } else if (text == "(" || text == ")") {
+            currentFormula += currentInput + text;
+            currentInput.clear();
+            lastWasOperator = false;
+        } else { // операторы + - x ÷ ^
+            if (lastWasOperator) return; // два оператора подряд запрещены
+            if (!currentInput.isEmpty()) {
+                currentFormula += currentInput;
+                currentInput.clear();
+            }
+            currentFormula += text;
+            lastWasOperator = true;
         }
+
+        emit updateInput(currentInput);
+        emit updateFormula(currentFormula + currentInput);
     }
 
-    void ProcessControlKey(ControlKey key) {
-        switch(key) {
-        case ControlKey::EQUALS:
-        {
-            if (!operation_) {
-                return;
-            }
+    void evaluateExpression() {
+        if (!currentInput.isEmpty()) currentFormula += currentInput;
 
-            std::string formula;
-            if(operation_name_ != " % ") {
-                formula = ToString(calculator_.GetNumber()) + operation_name_ + ToString(active_number_) + " = ";
-            }
-            else
-            {
-                formula = ToString(calculator_.GetNumber()) + operation_name_ +  " = ";
-            }
-            qDebug() << "operation_name_ : " << operation_name_;
+        try {
+            double result = computeExpression(currentFormula.toStdString());
+            currentInput = QString::number(result, 'g', 15);
+            currentFormula.clear();
+            lastWasOperator = false;
+        } catch (const std::runtime_error& e) {
+            currentInput = "Error";
+        } catch (...) {
+            currentInput = "Error";
+        }
 
-            auto error = operation_(active_number_);
-            if (error.has_value()) {
-                SetErrorInView(error.value());
+        emit updateInput(currentInput);
+        emit updateFormula(currentFormula);
+    }
+
+    double computeExpression(const std::string &expr) {
+        std::istringstream in(expr);
+        return parseExpression(in);
+    }
+
+    double parseExpression(std::istringstream &in) {
+        double result = parseTerm(in);
+        while (true) {
+            char op = 0;
+            if (!(in >> op)) break;
+            if (op != '+' && op != '-') {
+                in.putback(op);
                 break;
             }
-
-            SetFormulaInView(formula);
-            SetInputAsNumber(calculator_.GetNumber());
-            operation_ = {};
-            break;
+            double term = parseTerm(in);
+            if (op == '+') result += term;
+            else result -= term;
         }
-        case ControlKey::CLEAR:
-            SetInputAsNumber(Number{});
-            SetFormulaInView("");
-            operation_ = {};
-            break;
-        case ControlKey::PLUS_MINUS:
-            if (input_as_number_) {
-                active_number_ = -active_number_;
-                SetInputAsNumber(active_number_);
-            } else {
-                if (input_.size() && input_.front() == '-') {
-                    SetInputAsString(input_.substr(1));
-                } else {
-                    SetInputAsString("-" + input_);
-                }
+        return result;
+    }
+
+    double parseTerm(std::istringstream &in) {
+        double result = parseFactor(in);
+        while (true) {
+            char op = 0;
+            if (!(in >> op)) break;
+            if (op != 'x' && op != '÷') {
+                in.putback(op);
+                break;
             }
-            break;
-        case ControlKey::BACKSPACE:
-            if (input_.size() > 0) {
-                SetInputAsString(input_.substr(0, input_.size() - 1));
+            double factor = parseFactor(in);
+            if (op == 'x') result *= factor;
+            else {
+                if (factor == 0) throw std::runtime_error("Division by zero");
+                result /= factor;
             }
-            break;
-        case ControlKey::EXTRA_KEY:
-            DoExtraAction();
-            break;
         }
+        return result;
     }
 
-    void OnOperation(std::function<std::optional<Error> (Number)> action, std::string text) {
-        if (!operation_) {
-            calculator_.Set(active_number_);
-        }
+    double parseFactor(std::istringstream &in) {
+        double result = 0;
+        char ch;
+        if (!(in >> ch)) throw std::runtime_error("Unexpected end");
 
-        operation_name_ = text;
-        operation_ = action;
-        input_ = "";
-
-        SetFormulaInView(ToString(calculator_.GetNumber()) + text);
-    }
-
-    void SetInputAsString(const std::string& new_input) {
-        input_as_number_ = false;
-        input_ = new_input;
-        active_number_ = FromString<Number>(input_);
-        UpdateInputInView(new_input);
-    }
-
-    void SetInputAsNumber(Number number) {
-        input_as_number_ = true;
-        input_ = "";
-        active_number_ = number;
-        UpdateInputInView(ToString(active_number_));
-    }
-
-    void AddChar(char character) {
-        SetInputAsString(input_ + character);
-    }
-
-    void DoExtraAction() {
-        if constexpr (std::is_integral_v<Number>) {
-            return;
-        }
-        if constexpr (std::is_same_v<Number, Rational>) {
-            if (input_.size() == 0 || input_.find('/') != std::string::npos) {
-                return;
-            }
-            AddChar('/');
+        if (ch == '(') {
+            result = parseExpression(in);
+            if (!(in >> ch) || ch != ')') throw std::runtime_error("Expected ')'");
+        } else if (ch == '-') {
+            result = -parseFactor(in);
         } else {
-            if (input_.find('.') != std::string::npos) {
-                return;
-            }
-            AddChar('.');
+            in.putback(ch);
+            if (!(in >> result)) throw std::runtime_error("Invalid number");
         }
-    }
 
-    void UpdateInputInView(const std::string& string) {
-        updateInput(QString::fromStdString(string));
-        text_ = string;
-    }
-
-    void SetErrorInView(const std::string& string) {
-
-        updateInput(QString::fromStdString(string) );
-    }
-
-    void SetFormulaInView(const std::string& string) {
-        updateFormula(QString::fromStdString(string));
-        formula_ = string;
-    }
-
-    void SetMemInView(const std::string& string) {
-        // view_->SetMemText(string);
-        mem_text_ = string;
-    }
-
-    std::optional<std::string> GetExtraKey() const {
-        if constexpr (std::is_integral_v<Number>) {
-            return std::nullopt;
+        char next = in.peek();
+        if (next == '^') {
+            in.get();
+            double exponent = parseFactor(in);
+            result = std::pow(result, exponent);
         }
-        if constexpr (std::is_same_v<Number, Rational>) {
-            return "/";
-        }
-        return ".";
+
+        return result;
     }
-
-    void RevealView() {
-        updateInput(QString::fromStdString(text_));
-        updateFormula(QString::fromStdString(formula_));
-    }
-
-private:
-    std::function<std::optional<Error>(Number number)> operation_;
-    std::string operation_name_;
-
-    Calculator<Number> calculator_;
-
-    Number active_number_ = {};
-    std::string input_;
-
-    std::optional<Number> mem_ = {};
-
-    bool input_as_number_ = true;
-
-    std::string text_;
-    std::string formula_;
-    std::string mem_text_;
 };

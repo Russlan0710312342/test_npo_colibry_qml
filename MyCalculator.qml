@@ -124,14 +124,15 @@ Item {
                             let t = modelData.text
 
                             // нормализация
-                            if (t === "x")      t = "*"
-                            else if (t === "÷") t = "/"
-                            else if (t === "()")
-                            {
+                            if (t === "()") {
                                 t = openVal ? ")" : "("
                                 openVal = !openVal
+                                controller.handleButtonClick(t)
                             }
-                            controller.handleButtonClick(modelData.text)
+                            else {
+                                controller.handleButtonClick(modelData.text)
+                            }
+
 
                         }
                         cursorShape: Qt.PointingHandCursor
