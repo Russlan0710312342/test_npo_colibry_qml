@@ -140,7 +140,7 @@ Item {
                         id: btnText
                         anchors.centerIn: parent
                         text: modelData.text
-                        color: modelData.color === "white" ? "#04BFAD" : "white"
+                        color: modelData.color === "white" ? "#024873" : "white"
                         font.pixelSize: 20
                         font.bold: true
                     }
@@ -264,6 +264,8 @@ Item {
 
         Button {
             text: "ДА!"
+            font.family: "Open Sans"
+            font.bold: true
             font.pixelSize: 14
             width: 50
             height: 20
