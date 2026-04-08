@@ -248,7 +248,7 @@ Item {
 
             Image {
                 anchors.fill: parent
-                source: "qrc:/images/2.jpg"
+                source: "qrc:/images/1353073.svg"
             }
         }
 
