@@ -11,6 +11,7 @@ Window {
     minimumHeight: 400
     maximumHeight: 800
     color: "#024873"
+    flags: Qt.FramelessWindowHint
 
     MyCalculator {
         id: calculator
